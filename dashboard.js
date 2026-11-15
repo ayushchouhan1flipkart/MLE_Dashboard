@@ -10,10 +10,7 @@ const globalFilterKeys = ['master', 'final_fc', 'bu', 'sc', 'analytical_vertical
 const dsFilterKeys = ['current_flag', 'abhi_flag', 'common_flag', 'common_all_flag', 'new_all_flag', 'updated_flag', 'next2500_flag_new', 'business_zone'];
 let currentFilters = {};
 
-// --- Initialization & Data Fetching ---
-
 $(document).ready(function() {
-    // Fake progress bar for visual feedback
     let progressTimer = setInterval(() => {
         if (currentProgress < 85) {
             currentProgress += Math.floor(Math.random() * 5) + 1;
@@ -21,7 +18,6 @@ $(document).ready(function() {
         }
     }, 300);
 
-    // Call Google Apps Script Backend
     google.script.run
         .withSuccessHandler(function(payload) {
             clearInterval(progressTimer);
@@ -29,7 +25,7 @@ $(document).ready(function() {
             processDriveData(payload);
         })
         .withFailureHandler(function(err) {
-            alert('Error fetching files from Drive: ' + err.message);
+            alert('Error fetching files: ' + err.message);
             $('#loader-overlay').hide();
         })
         .getDashboardData();
@@ -37,11 +33,9 @@ $(document).ready(function() {
 
 function processDriveData(payload) {
     const parseOpts = { header: true, skipEmptyLines: true, dynamicTyping: true };
-    
     if (payload['loss_tree_ds_detail_ele.csv']) DB.ELE.DS = Papa.parse(payload['loss_tree_ds_detail_ele.csv'], parseOpts).data;
     if (payload['loss_tree_sh_detail_ele.csv']) DB.ELE.SH = Papa.parse(payload['loss_tree_sh_detail_ele.csv'], parseOpts).data;
     if (payload['dod_ele_sh.csv']) DB.ELE.DOD = Papa.parse(payload['dod_ele_sh.csv'], parseOpts).data;
-    
     if (payload['loss_tree_ds_detail_sha.csv']) DB.SHA.DS = Papa.parse(payload['loss_tree_ds_detail_sha.csv'], parseOpts).data;
     if (payload['loss_tree_sh_detail_sha.csv']) DB.SHA.SH = Papa.parse(payload['loss_tree_sh_detail_sha.csv'], parseOpts).data;
     if (payload['dod_sha_sh.csv']) DB.SHA.DOD = Papa.parse(payload['dod_sha_sh.csv'], parseOpts).data;
@@ -53,26 +47,18 @@ function processDriveData(payload) {
     renderActiveView();
 }
 
-// --- UI Navigation ---
-
-function switchDomain(domain) {
-    activeDomain = domain;
-    populateFilters();
-    renderActiveView();
-}
+function switchDomain(domain) { activeDomain = domain; populateFilters(); renderActiveView(); }
+window.switchDomain = switchDomain;
 
 function switchTab(tabName) {
     activeTab = tabName;
     $('.tab-content-area').addClass('d-none');
     $('#content-' + tabName).removeClass('d-none');
-    
-    if(tabName === 'ds_level') {
-        $('#ds-filters-container').removeClass('d-none');
-    } else {
-        $('#ds-filters-container').addClass('d-none');
-    }
+    if(tabName === 'ds_level') { $('#ds-filters-container').removeClass('d-none'); } 
+    else { $('#ds-filters-container').addClass('d-none'); }
     renderActiveView();
 }
+window.switchTab = switchTab;
 
 function switchLossTreeGroup(group, elem) {
     activeLossTreeGroup = group;
@@ -80,6 +66,7 @@ function switchLossTreeGroup(group, elem) {
     $(elem).addClass('active');
     renderActiveView();
 }
+window.switchLossTreeGroup = switchLossTreeGroup;
 
 function switchTrendSub(sub, elem) {
     activeTrendSub = sub;
@@ -87,13 +74,13 @@ function switchTrendSub(sub, elem) {
     $(elem).addClass('active');
     renderActiveView();
 }
+window.switchTrendSub = switchTrendSub;
 
 function toggleFullScreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen();
     else if (document.exitFullscreen) document.exitFullscreen();
 }
-
-// --- Data & Filters ---
+window.toggleFullScreen = toggleFullScreen;
 
 function getValSafe(row, key) {
     const lowerKey = key.toLowerCase();
@@ -124,7 +111,6 @@ function populateFilters() {
         }
     });
     $('#exclusive-ds-filters-container').html(dsHtml);
-
     $('.select2').select2({ placeholder: 'All', width: '100%' });
 }
 
@@ -140,6 +126,7 @@ function applyFilters() {
     });
     renderActiveView();
 }
+window.applyFilters = applyFilters;
 
 function filterData(data, includeDS = false) {
     return data.filter(row => {
@@ -155,20 +142,14 @@ function filterData(data, includeDS = false) {
     });
 }
 
-function safeSum(arr, key) {
-    return arr.reduce((sum, row) => sum + (Number(getValSafe(row, key)) || 0), 0);
-}
-
-// --- DataTables Rendering ---
+function safeSum(arr, key) { return arr.reduce((sum, row) => sum + (Number(getValSafe(row, key)) || 0), 0); }
 
 const dtConfigBase = {
     deferRender: true, destroy: true, scrollX: true, scrollY: '55vh', scrollCollapse: true, 
     paging: true, pageLength: 50, lengthMenu: [10, 50, 100, 250, 500],
-    autoWidth: false,
-    fixedColumns: { left: 1 } // Keeps the first column sticky
+    autoWidth: false, fixedColumns: { left: 1 }
 };
 
-// Styling for percentage cells (matches reference exactly)
 function applyColorCoding(td, cellData, rowData) {
     let pct = parseFloat(cellData); 
     if (isNaN(pct)) return;
@@ -226,8 +207,7 @@ function renderSummaryTable() {
             ds_instock: (safeSum(rows, 'ds_instock_count') / ds_master_cnt) * 100,
             ds_instock_it: (safeSum(rows, 'ds_instock_iwit_count') / ds_master_cnt) * 100,
             ds_mstn: (safeSum(rows, 'ds_mstn_master') / ds_norm_master) * 100,
-            irn: safeSum(rows, 'IRN'),
-            iwit: safeSum(rows, 'sh_ds_iwit')
+            irn: safeSum(rows, 'IRN'), iwit: safeSum(rows, 'sh_ds_iwit')
         });
     });
 
@@ -250,6 +230,7 @@ function renderSummaryTable() {
         { title: "SH DS IWIT", data: "iwit" }
     ];
 
+    if ($.fn.DataTable.isDataTable('#dt-summary')) { $('#dt-summary').DataTable().clear().destroy(); $('#dt-summary').empty(); }
     $('#dt-summary').DataTable({ ...dtConfigBase, data: tableData, columns: columns });
 }
 
@@ -276,9 +257,7 @@ function renderLossTree() {
     const tableData = [];
     Object.keys(grouped).sort().forEach(g => {
         const row = grouped[g];
-        allRemarks.forEach(rmk => {
-            row[rmk + '_pct'] = row.total > 0 ? (row[rmk] / row.total) * 100 : 0;
-        });
+        allRemarks.forEach(rmk => { row[rmk + '_pct'] = row.total > 0 ? (row[rmk] / row.total) * 100 : 0; });
         tableData.push(row);
     });
 
@@ -288,15 +267,12 @@ function renderLossTree() {
     ];
     allRemarks.forEach(rmk => {
         columns.push({ 
-            title: rmk + " %", 
-            data: rmk + "_pct", 
-            render: $.fn.dataTable.render.number(',', '.', 1, '', '%'),
-            createdCell: function(td, cellData) {
-                if (cellData > 15) { td.style.color = '#b91c1c'; td.style.fontWeight = '700'; }
-            }
+            title: rmk + " %", data: rmk + "_pct", render: $.fn.dataTable.render.number(',', '.', 1, '', '%'),
+            createdCell: function(td, cellData) { if (cellData > 15) { td.style.color = '#b91c1c'; td.style.fontWeight = '700'; } }
         });
     });
 
+    if ($.fn.DataTable.isDataTable('#dt-loss-tree')) { $('#dt-loss-tree').DataTable().clear().destroy(); $('#dt-loss-tree').empty(); }
     $('#dt-loss-tree').DataTable({ ...dtConfigBase, data: tableData, columns: columns });
 }
 
@@ -319,9 +295,7 @@ function renderDSLevel() {
     const tableData = [];
     Object.keys(grouped).sort().forEach(g => {
         const row = grouped[g];
-        allRemarks.forEach(rmk => {
-            row[rmk + '_pct'] = row.total > 0 ? (row[rmk] / row.total) * 100 : 0;
-        });
+        allRemarks.forEach(rmk => { row[rmk + '_pct'] = row.total > 0 ? (row[rmk] / row.total) * 100 : 0; });
         tableData.push(row);
     });
 
@@ -331,15 +305,12 @@ function renderDSLevel() {
     ];
     allRemarks.forEach(rmk => {
         columns.push({ 
-            title: rmk + " %", 
-            data: rmk + "_pct", 
-            render: $.fn.dataTable.render.number(',', '.', 1, '', '%'),
-            createdCell: function(td, cellData) {
-                if (cellData > 15) { td.style.color = '#b91c1c'; td.style.fontWeight = '700'; }
-            }
+            title: rmk + " %", data: rmk + "_pct", render: $.fn.dataTable.render.number(',', '.', 1, '', '%'),
+            createdCell: function(td, cellData) { if (cellData > 15) { td.style.color = '#b91c1c'; td.style.fontWeight = '700'; } }
         });
     });
 
+    if ($.fn.DataTable.isDataTable('#dt-ds-level')) { $('#dt-ds-level').DataTable().clear().destroy(); $('#dt-ds-level').empty(); }
     $('#dt-ds-level').DataTable({ ...dtConfigBase, data: tableData, columns: columns });
 }
 
