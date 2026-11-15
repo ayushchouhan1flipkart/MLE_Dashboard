@@ -1,6 +1,3 @@
-// PASTE YOUR APPS SCRIPT WEB APP URL HERE
-const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
-
 const DB = {
     ELE: { SH: [], DS: [], DOD: [] },
     SHA: { SH: [], DS: [], DOD: [] }
@@ -16,17 +13,15 @@ const globalFilterKeys = ['master', 'final_fc', 'bu', 'sc', 'analytical_vertical
 const dsFilterKeys = ['current_flag', 'abhi_flag', 'common_flag', 'common_all_flag', 'new_all_flag', 'updated_flag', 'next2500_flag_new', 'business_zone'];
 let currentFilters = {};
 
-// 1. Fetch data from Google Drive via the Apps Script API
-window.onload = async function() {
-    try {
-        const response = await fetch(APPS_SCRIPT_API_URL);
-        if (!response.ok) throw new Error("Network response was not ok");
-        const payload = await response.json();
-        processDriveData(payload);
-    } catch (err) {
-        alert('Error fetching files from Drive: ' + err.message);
-        document.getElementById('loading-overlay').style.display = 'none';
-    }
+// 1. Fetch data from Google Drive natively
+window.onload = function() {
+    google.script.run
+        .withSuccessHandler(processDriveData)
+        .withFailureHandler(function(err) {
+            alert('Error fetching files from Drive: ' + err.message);
+            document.getElementById('loading-overlay').style.display = 'none';
+        })
+        .getDashboardData();
 };
 
 // 2. Parse the CSV strings
@@ -54,8 +49,7 @@ function switchDomain(domain) {
     populateFilters();
     renderActiveView();
 }
-
-window.switchDomain = switchDomain; // Expose to global scope for HTML clicks
+window.switchDomain = switchDomain;
 
 function switchTab(tabName) {
     activeTab = tabName;
